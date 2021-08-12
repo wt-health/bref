@@ -19,6 +19,7 @@
     },
     "multiValueQueryStringParameters": {
         "foo[]": ["bar", "baz"],
+        "date": ["2021-07-06", "2021-08-06"],
         "cards[]": ["birthday"],
         "colors[][]": ["red", "blue"],
         "shapes[a][]": ["square", "triangle"],
