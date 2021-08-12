@@ -223,6 +223,11 @@ final class HttpRequestEvent implements LambdaEvent
     {
         if ($this->isFormatV2()) {
             $queryString = $this->event['rawQueryString'] ?? '';
+
+            if (isset($this->event['queryStringParameters']) && $this->event['queryStringParameters']) {
+                return $this->parseMultiValueQueryStringParameters($this->event['queryStringParameters']);
+            }
+
             // We re-parse the query string to make sure it is URL-encoded
             // Why? To match the format we get when using PHP outside of Lambda (we get the query string URL-encoded)
             parse_str($queryString, $queryParameters);
@@ -263,7 +268,6 @@ final class HttpRequestEvent implements LambdaEvent
                     $queryString .= $key . '=' . $value . '&';
                 }
             }
-
             // parse_str will automatically `urldecode` any value that needs decoding. This will allow parameters
             // like `?my_param[bref][]=first&my_param[bref][]=second` to properly work. `$decodedQueryParameters`
             // will be an array with parameter names as keys.
@@ -273,18 +277,7 @@ final class HttpRequestEvent implements LambdaEvent
         }
 
         if (isset($this->event['multiValueQueryStringParameters']) && $this->event['multiValueQueryStringParameters']) {
-            $queryParameterStr = [];
-            // go through the params and url-encode the values, to build up a complete query-string
-            foreach ($this->event['multiValueQueryStringParameters'] as $key => $value) {
-                foreach ($value as $v) {
-                    $queryParameterStr[] = $key . '=' . urlencode($v);
-                }
-            }
-
-            // re-parse the query-string so it matches the format used when using PHP outside of Lambda
-            // this is particularly important when using multi-value params - eg. myvar[]=2&myvar=3 ... = [2, 3]
-            parse_str(implode('&', $queryParameterStr), $queryParameters);
-            return http_build_query($queryParameters);
+            return $this->parseMultiValueQueryStringParameters($this->event['multiValueQueryStringParameters']);
         }
 
         if (empty($this->event['queryStringParameters'])) {
@@ -345,5 +338,50 @@ final class HttpRequestEvent implements LambdaEvent
     public function isFormatV2(): bool
     {
         return $this->payloadVersion === 2.0;
+    }
+
+    private function parseMultiValueQueryStringParameters(array $queryParameters): string
+    {
+        $queryParameterStr = [];
+        $keys = [];
+        // go through the params and url-encode the values, to build up a complete query-string
+
+        // looping through the multiple values and saving keys in a array
+        foreach ($queryParameters as $key => $value) {
+            $pieces = $this->payloadVersion === 2.0 ? explode(',', $value) : $value;
+            foreach ($pieces as $v) {
+                $keys = array_merge([$key], $keys);
+            }
+        }
+
+        // mapping keys and identifying the ones without [] E.g date=...&date=...&myvar=...
+        $keys = array_map(function ($value) {
+            return preg_match('/[\[\]]/', $value) === 0 ? $value : '';
+        }, $keys);
+        //removing empty value from the array, reindexing, counting and filtering by the repeated
+        $keys = array_filter($keys);
+        $keys = array_values($keys);
+        $keys = array_count_values($keys);
+        $keys = array_filter($keys, function ($value) {
+            return $value > 1;
+        });
+        $keys = array_keys($keys);
+
+        foreach ($queryParameters as $key => $value) {
+            $pieces = $this->payloadVersion === 2.0 ? explode(',', $value) : $value;
+            foreach ($pieces as $v) {
+                // loop through the array creating the parameter string and adding [] for the repeated ones
+                if (in_array($key, $keys)) {
+                    $queryParameterStr[] = $key . '[]=' . urlencode($v);
+                } else {
+                    $queryParameterStr[] = $key . '=' . urlencode($v);
+                }
+            }
+        }
+
+        // re-parse the query-string so it matches the format used when using PHP outside of Lambda
+        // this is particularly important when using multi-value params - eg. myvar[]=2&myvar=3 ... = [2, 3]
+        parse_str(implode('&', $queryParameterStr), $params);
+        return http_build_query($params);
     }
 }

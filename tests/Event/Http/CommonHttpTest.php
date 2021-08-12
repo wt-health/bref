@@ -102,13 +102,14 @@ abstract class CommonHttpTest extends TestCase implements HttpRequestProxyTest
 
         $this->assertQueryParameters([
             'foo' => ['bar', 'baz'],
+            'date' => ['2021-07-06', '2021-08-06'],
             'cards' => ['birthday'],
             'colors' => [['red'], ['blue']],
             'shapes' => ['a' => ['square', 'triangle']],
             'myvar' => 'abc',
         ]);
-        $this->assertQueryString('foo%5B0%5D=bar&foo%5B1%5D=baz&cards%5B0%5D=birthday&colors%5B0%5D%5B0%5D=red&colors%5B1%5D%5B0%5D=blue&shapes%5Ba%5D%5B0%5D=square&shapes%5Ba%5D%5B1%5D=triangle&myvar=abc');
-        $this->assertUri('/path?foo%5B0%5D=bar&foo%5B1%5D=baz&cards%5B0%5D=birthday&colors%5B0%5D%5B0%5D=red&colors%5B1%5D%5B0%5D=blue&shapes%5Ba%5D%5B0%5D=square&shapes%5Ba%5D%5B1%5D=triangle&myvar=abc');
+        $this->assertQueryString('foo%5B0%5D=bar&foo%5B1%5D=baz&date%5B0%5D=2021-07-06&date%5B1%5D=2021-08-06&cards%5B0%5D=birthday&colors%5B0%5D%5B0%5D=red&colors%5B1%5D%5B0%5D=blue&shapes%5Ba%5D%5B0%5D=square&shapes%5Ba%5D%5B1%5D=triangle&myvar=abc');
+        $this->assertUri('/path?foo%5B0%5D=bar&foo%5B1%5D=baz&date%5B0%5D=2021-07-06&date%5B1%5D=2021-08-06&cards%5B0%5D=birthday&colors%5B0%5D%5B0%5D=red&colors%5B1%5D%5B0%5D=blue&shapes%5Ba%5D%5B0%5D=square&shapes%5Ba%5D%5B1%5D=triangle&myvar=abc');
     }
 
     /**
